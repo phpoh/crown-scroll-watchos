@@ -75,7 +75,28 @@ cd crown-scroll-watchos
 
 ### 3. Network Security / 网络安全配置
 
-Add to your Watch App's **Info.plist**:
+> **⚠️ 必须配置，否则连接会被系统拦截！ / Must configure, otherwise connections will be blocked by the system!**
+
+因为我们用的是 `ws://`（非加密），Apple 默认会阻止非 HTTPS 连接，需要在 Info.plist 中声明允许。
+
+Because we use `ws://` (not encrypted), Apple blocks non-HTTPS connections by default. You must opt in via Info.plist.
+
+**Xcode 中操作步骤 / Steps in Xcode:**
+
+1. 左侧文件列表找到 **CrownScroll** watch app target（不是项目总目录，是 watch 那个 target）
+2. 点击 **Info** 标签页
+3. 列表中右键 → **Add Row**
+4. 输入 `App Transport Security Settings`（或 `NSAppTransportSecurity`），类型选 **Dictionary**
+5. 展开后点 **+** 添加子项，输入 `Allow Arbitrary Loads`（或 `NSAllowsArbitraryLoads`），类型选 **Boolean**，值设为 **YES**
+
+**最终效果 / Result:**
+
+```
+App Transport Security Settings          Dictionary
+  └── Allow Arbitrary Loads               Boolean    YES
+```
+
+等价的 XML 配置 / Equivalent XML:
 
 ```xml
 <key>NSAppTransportSecurity</key>
@@ -84,8 +105,6 @@ Add to your Watch App's **Info.plist**:
     <true/>
 </dict>
 ```
-
-> This allows WebSocket connections to `ws://` (without TLS). / 允许 WebSocket 连接到 `ws://`（无 TLS）。
 
 ### 4. Build & Run / 编译运行
 
