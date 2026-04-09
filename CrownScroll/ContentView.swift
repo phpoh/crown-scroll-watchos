@@ -1,5 +1,7 @@
 import SwiftUI
 
+/// Main view optimized for Apple Watch Series 7 (45mm & 41mm).
+/// 主界面，针对 Apple Watch Series 7（45mm 和 41mm）优化。
 struct ContentView: View {
     @EnvironmentObject var wsManager: WebSocketManager
     @State private var crownValue: Double = 0
@@ -28,86 +30,125 @@ struct ContentView: View {
     // MARK: - Setup View / 连接界面
 
     private var setupView: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "crown.fill")
-                .font(.title)
-                .foregroundColor(.cyan)
+        VStack(spacing: 12) {
+            Spacer(minLength: 4)
+
+            // Crown icon with glow effect / 表冠图标带发光效果
+            ZStack {
+                Circle()
+                    .fill(Color.cyan.opacity(0.15))
+                    .frame(width: 56, height: 56)
+                Image(systemName: "crown.fill")
+                    .font(.title2)
+                    .foregroundColor(.cyan)
+            }
 
             Text("CrownScroll")
-                .font(.headline)
+                .font(.title3)
+                .fontWeight(.semibold)
 
-            TextField("服务器 IP", text: $wsManager.host)
+            // IP input / IP 输入框
+            TextField("192.168.1.100", text: $wsManager.host)
                 .multilineTextAlignment(.center)
-                .font(.caption)
-                .padding(8)
+                .font(.body)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
                 .background(Color.gray.opacity(0.2))
-                .cornerRadius(8)
+                .cornerRadius(10)
 
+            // Connect button / 连接按钮
             Button(action: connectAndStart) {
-                Text("连接")
-                    .frame(maxWidth: .infinity)
+                HStack {
+                    Image(systemName: "link")
+                    Text("连接")
+                }
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .tint(.green)
+            .controlSize(.large)
 
+            // Status / 状态文字
             Text(wsManager.connectionStatus)
-                .font(.system(size: 10))
+                .font(.footnote)
                 .foregroundColor(.gray)
+
+            Spacer(minLength: 4)
         }
-        .padding()
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
     }
 
     // MARK: - Control View / 控制界面
 
     private var controlView: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 6) {
+            Spacer(minLength: 2)
+
             // Connection indicator / 连接指示
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 Circle()
                     .fill(Color.green)
-                    .frame(width: 6, height: 6)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: .green.opacity(0.5), radius: 3)
                 Text("已连接")
-                    .font(.system(size: 9))
+                    .font(.caption)
                     .foregroundColor(.green)
+                Spacer()
+                Text(wsManager.host)
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 4)
+
+            // Velocity display — large center display / 速度大字显示
+            VStack(spacing: 2) {
+                Text(wsManager.lastVelocity)
+                    .font(.system(size: 42, weight: .heavy, design: .monospaced))
+                    .foregroundColor(velocityColors[wsManager.lastVelocity] ?? .white)
+                    .shadow(
+                        color: (velocityColors[wsManager.lastVelocity] ?? .white)
+                            .opacity(0.4),
+                        radius: 6
+                    )
+                    .animation(.easeInOut(duration: 0.2), value: wsManager.lastVelocity)
             }
 
-            // Velocity display / 速度显示
-            Text(wsManager.lastVelocity)
-                .font(.system(size: 36, weight: .bold, design: .monospaced))
-                .foregroundColor(velocityColors[wsManager.lastVelocity] ?? .white)
+            // Stats row / 数据统计行
+            HStack(spacing: 0) {
+                Spacer()
+                statItem(label: "位置", value: "\(wsManager.lastPosition)")
+                Spacer()
+                statItem(label: "步长", value: "\(wsManager.lastStep)")
+                Spacer()
+            }
 
-            // Stats / 数据统计
-            HStack(spacing: 20) {
-                VStack(spacing: 2) {
-                    Text("位置")
-                        .font(.system(size: 9))
-                        .foregroundColor(.gray)
-                    Text("\(wsManager.lastPosition)")
-                        .font(.caption)
-                        .monospacedDigit()
+            // Divider / 分隔线
+            Rectangle()
+                .fill(Color.gray.opacity(0.2))
+                .frame(height: 1)
+                .padding(.horizontal, 16)
+
+            // Hint + Disconnect / 提示 + 断开按钮
+            HStack {
+                Text("旋转表冠控制")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button("断开") {
+                    stopSending()
+                    wsManager.disconnect()
                 }
-                VStack(spacing: 2) {
-                    Text("步长")
-                        .font(.system(size: 9))
-                        .foregroundColor(.gray)
-                    Text("\(wsManager.lastStep)")
-                        .font(.caption)
-                        .monospacedDigit()
-                }
+                .font(.footnote)
+                .tint(.red)
             }
+            .padding(.horizontal, 4)
 
-            Text("旋转表冠控制滚动")
-                .font(.system(size: 9))
-                .foregroundColor(.secondary)
-
-            Button("断开连接") {
-                stopSending()
-                wsManager.disconnect()
-            }
-            .font(.system(size: 10))
-            .tint(.red)
+            Spacer(minLength: 2)
         }
-        .padding()
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .focusable()
         .digitalCrownRotation(
             $crownValue,
@@ -121,6 +162,20 @@ struct ContentView: View {
             let delta = newValue - lastCrownValue
             lastCrownValue = newValue
             accumulatedDelta += delta
+        }
+    }
+
+    // MARK: - Components / 组件
+
+    private func statItem(label: String, value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundColor(.gray)
+            Text(value)
+                .font(.title3)
+                .fontWeight(.medium)
+                .monospacedDigit()
         }
     }
 

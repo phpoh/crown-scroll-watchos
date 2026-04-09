@@ -2,6 +2,8 @@
 
 > Apple Watch Digital Crown controller — turn your watch into a holographic scroll controller!
 > Apple Watch 数字表冠控制器 — 把手表变成全息滚动控制器！
+>
+> **Primary target / 主要适配：Apple Watch Series 7 (45mm / 41mm)**
 
 ---
 
@@ -40,7 +42,7 @@ System-level scroll (Windows / macOS) / 系统级滚动
 
 | Requirement | Version |
 |-------------|---------|
-| Apple Watch | watchOS 9.0+ |
+| Apple Watch | watchOS 9.0+（**Series 7 及以上**推荐）/ **Series 7+** recommended |
 | Mac | Xcode 14+ |
 | Backend | [rust-api](https://github.com/phpoh/rust-api) running on your computer |
 
