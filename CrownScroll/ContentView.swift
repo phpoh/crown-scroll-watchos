@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var wsManager: WebSocketManager
     @State private var crownValue: Double = 0
+    @State private var lastCrownValue: Double = 0
     @State private var accumulatedDelta: Double = 0
     @State private var sendTimer: Timer?
 
@@ -117,7 +118,9 @@ struct ContentView: View {
             isHapticFeedbackEnabled: true
         )
         .onChange(of: crownValue) { newValue in
-            accumulatedDelta += (newValue - crownValue)
+            let delta = newValue - lastCrownValue
+            lastCrownValue = newValue
+            accumulatedDelta += delta
         }
     }
 
