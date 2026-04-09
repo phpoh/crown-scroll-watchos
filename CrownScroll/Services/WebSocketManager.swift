@@ -12,6 +12,7 @@ class WebSocketManager: ObservableObject {
 
     private var webSocketTask: URLSessionWebSocketTask?
     private var urlSession: URLSession?
+    private var connectAttemptId: UInt = 0
 
     // MARK: - Connection
 
@@ -33,8 +34,10 @@ class WebSocketManager: ObservableObject {
         webSocketTask?.resume()
 
         // Verify connection after delay / 延迟验证连接
+        connectAttemptId += 1
+        let currentAttempt = connectAttemptId
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            guard let self = self else { return }
+            guard let self = self, self.connectAttemptId == currentAttempt else { return }
             if self.webSocketTask?.state == .running {
                 self.isConnected = true
                 self.connectionStatus = "已连接"

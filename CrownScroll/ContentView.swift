@@ -157,5 +157,7 @@ struct ContentView: View {
         sendTimer?.invalidate()
         sendTimer = nil
         accumulatedDelta = 0
+        crownValue = 0
+        lastCrownValue = 0
     }
 }
