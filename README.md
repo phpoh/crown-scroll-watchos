@@ -231,6 +231,10 @@ Xcode 连接 Apple Watch 真机，查看控制台日志输出。
 
 ---
 
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=phpoh/crown-scroll-watchos&type=Date)](https://star-history.com/#phpoh/crown-scroll-watchos&Date)
+
 ## 📜 License
 
 MIT License
