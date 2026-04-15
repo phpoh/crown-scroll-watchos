@@ -1,7 +1,7 @@
 import Foundation
 
-/// WebSocket manager — connects to rust-api backend and sends crown rotation data.
-/// WebSocket 管理器 — 连接 rust-api 后端，发送表冠旋转数据。
+/// HTTP-based crown controller — uses POST instead of WebSocket to bypass VPN blocking.
+/// 基于 HTTP 的表冠控制器 — 用 POST 替代 WebSocket 绕过 VPN 拦截。
 class WebSocketManager: ObservableObject {
     @Published var isConnected = false
     @Published var connectionStatus = "未连接"
@@ -10,50 +10,31 @@ class WebSocketManager: ObservableObject {
     @Published var lastStep = 0
     @Published var host = "192.168.1.100"
 
-    private var webSocketTask: URLSessionWebSocketTask?
-    private var urlSession: URLSession?
-    private var connectAttemptId: UInt = 0
+    // MARK: - Connection (test reachability)
 
-    // MARK: - Connection
-
-    /// Connect to the rust-api WebSocket server.
-    /// 连接 rust-api WebSocket 服务器。
     func connect() {
         let cleanHost = host.trimmingCharacters(in: .whitespaces)
-        let urlString = "ws://\(cleanHost):3000/ws/crown"
-        guard let url = URL(string: urlString) else {
-            DispatchQueue.main.async { self.connectionStatus = "地址无效" }
-            return
-        }
-
         disconnect()
         DispatchQueue.main.async { self.connectionStatus = "连接中..." }
 
-        urlSession = URLSession(configuration: .default)
-        webSocketTask = urlSession?.webSocketTask(with: url)
-        webSocketTask?.resume()
+        let testUrl = URL(string: "http://\(cleanHost):3000/screenshot")!
+        var request = URLRequest(url: testUrl)
+        request.timeoutInterval = 5
 
-        // Verify connection after delay / 延迟验证连接
-        connectAttemptId += 1
-        let currentAttempt = connectAttemptId
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            guard let self = self, self.connectAttemptId == currentAttempt else { return }
-            if self.webSocketTask?.state == .running {
-                self.isConnected = true
-                self.connectionStatus = "已连接"
-                self.startReceiving()
-            } else {
-                self.connectionStatus = "连接失败"
+        URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                if let error = error {
+                    self.connectionStatus = "连接失败: \(error.localizedDescription)"
+                } else {
+                    self.isConnected = true
+                    self.connectionStatus = "已连接"
+                }
             }
-        }
+        }.resume()
     }
 
-    /// Disconnect from server.
-    /// 断开连接。
     func disconnect() {
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
-        webSocketTask = nil
-        urlSession = nil
         isConnected = false
         connectionStatus = "未连接"
         lastVelocity = "--"
@@ -61,51 +42,34 @@ class WebSocketManager: ObservableObject {
         lastStep = 0
     }
 
-    // MARK: - Send
+    // MARK: - Send (HTTP POST)
 
-    /// Send crown rotation data to the server.
-    /// 发送表冠旋转数据到服务器。
     func sendCrownInput(delta: Int, speed: Double) {
-        let message: [String: Any] = [
+        let cleanHost = host.trimmingCharacters(in: .whitespaces)
+        guard let url = URL(string: "http://\(cleanHost):3000/crown") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 2
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
             "delta": delta,
             "speed": speed
-        ]
+        ])
 
-        guard let data = try? JSONSerialization.data(withJSONObject: message),
-              let jsonString = String(data: data, encoding: .utf8) else { return }
-
-        webSocketTask?.send(.string(jsonString)) { [weak self] error in
-            if let _ = error {
-                DispatchQueue.main.async {
-                    self?.isConnected = false
-                    self?.connectionStatus = "连接断开"
+        URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
+            guard let data = data, error == nil else {
+                if let error = error {
+                    print("POST error: \(error)")
                 }
+                return
             }
-        }
+            self?.parseResponse(data)
+        }.resume()
     }
 
-    // MARK: - Receive
-
-    private func startReceiving() {
-        webSocketTask?.receive { [weak self] result in
-            switch result {
-            case .success(let message):
-                if case .string(let text) = message {
-                    self?.parseResponse(text)
-                }
-                self?.startReceiving()
-            case .failure:
-                DispatchQueue.main.async {
-                    self?.isConnected = false
-                    self?.connectionStatus = "连接断开"
-                }
-            }
-        }
-    }
-
-    private func parseResponse(_ text: String) {
-        guard let data = text.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+    private func parseResponse(_ data: Data) {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
 
         DispatchQueue.main.async {
             if let position = json["position"] as? Int { self.lastPosition = position }

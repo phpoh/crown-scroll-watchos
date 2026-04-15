@@ -1,0 +1,23 @@
+name: CrownScroll
+options:
+  bundleIdPrefix: com.phpoh
+  deploymentTarget:
+    watchOS: "26.0"
+  generateEmptyDirectories: true
+
+targets:
+  CrownScroll Watch App:
+    type: application
+    platform: watchOS
+    sources:
+      - CrownScroll
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.phpoh.CrownScroll.watchkitapp
+        INFOPLIST_FILE: CrownScroll/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "4"
+        WATCHOS_DEPLOYMENT_TARGET: "26.0"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"

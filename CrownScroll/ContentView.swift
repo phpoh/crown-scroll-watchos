@@ -1,20 +1,20 @@
 import SwiftUI
+import WatchKit
 
 /// Main view optimized for Apple Watch Series 7 (45mm & 41mm).
 /// 主界面，针对 Apple Watch Series 7（45mm 和 41mm）优化。
 struct ContentView: View {
     @EnvironmentObject var wsManager: WebSocketManager
     @State private var crownValue: Double = 0
-    @State private var lastCrownValue: Double = 0
     @State private var accumulatedDelta: Double = 0
     @State private var sendTimer: Timer?
 
     private let velocityColors: [String: Color] = [
-        "CRAWL": .white,
-        "STEADY": .cyan,
-        "BOOST": .purple,
-        "WARP": .orange,
-        "HYPERDRIVE": .red
+        "志辉轻滑": .white,
+        "志辉稳滑": .cyan,
+        "志辉加速": .purple,
+        "志辉飞驰": .orange,
+        "志辉极速": .red
     ]
 
     var body: some View {
@@ -43,7 +43,7 @@ struct ContentView: View {
                     .foregroundColor(.cyan)
             }
 
-            Text("CrownScroll")
+            Text("志辉滚轮")
                 .font(.title3)
                 .fontWeight(.semibold)
 
@@ -158,9 +158,8 @@ struct ContentView: View {
             isContinuous: true,
             isHapticFeedbackEnabled: true
         )
-        .onChange(of: crownValue) { newValue in
-            let delta = newValue - lastCrownValue
-            lastCrownValue = newValue
+        .onChange(of: crownValue) { oldValue, newValue in
+            let delta = newValue - oldValue
             accumulatedDelta += delta
         }
     }
@@ -195,13 +194,16 @@ struct ContentView: View {
         sendTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             guard abs(accumulatedDelta) > 0.01 else { return }
 
-            // Convert rotation to delta (scaled by 10 for sensitivity)
-            // 将旋转量转为 delta（放大 10 倍增加灵敏度）
-            let delta = Int(accumulatedDelta * 10)
+            // Convert rotation to delta (scaled by 3 for sensitivity)
+            // 将旋转量转为 delta（放大 3 倍）
+            let delta = Int(accumulatedDelta * 3)
 
             // Calculate speed (0.0 ~ 1.0)
             // 计算速度 (0.0 ~ 1.0)
             let speed = min(abs(accumulatedDelta) / 0.3, 1.0)
+
+            // Play haptic feedback sound / 播放触觉反馈音效
+            WKInterfaceDevice.current().play(.click)
 
             wsManager.sendCrownInput(delta: delta, speed: speed)
             accumulatedDelta = 0
@@ -213,6 +215,5 @@ struct ContentView: View {
         sendTimer = nil
         accumulatedDelta = 0
         crownValue = 0
-        lastCrownValue = 0
     }
 }
